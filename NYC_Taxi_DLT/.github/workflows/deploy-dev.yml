@@ -15,7 +15,6 @@ jobs:
   validate:
     name: Validate Bundle (Dev)
     runs-on: ubuntu-latest
-    environment: dev
 
     steps:
       - name: Checkout Repository
@@ -45,7 +44,6 @@ jobs:
     needs: validate
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: dev
 
     steps:
       - name: Checkout Repository
