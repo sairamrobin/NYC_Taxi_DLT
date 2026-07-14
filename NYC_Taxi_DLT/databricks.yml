@@ -2,7 +2,7 @@
 # See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
 bundle:
   name: NYC_Taxi_DLT
-  uuid: 317fd609-9ed8-4f84-a1e8-9da57d4b5f47
+  # uuid: 317fd609-9ed8-4f84-a1e8-9da57d4b5f47
 
 include:
   - resources/*.yml
