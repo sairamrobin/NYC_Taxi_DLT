@@ -1,15 +1,15 @@
 name: Deploy to Dev
 
 on:
-  # Validate when a PR is opened, synchronized, or reopened against dev
+  # Validate when a PR is opened, synchronized, or reopened against develop
   pull_request:
     branches:
-      - dev
+      - develop
 
-  # Validate and Deploy when code is merged into dev
+  # Validate and Deploy when code is merged into develop
   push:
     branches:
-      - dev
+      - develop
 
 jobs:
   validate:
