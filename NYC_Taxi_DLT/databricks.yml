@@ -12,7 +12,7 @@ artifacts:
     type: whl
     build: uv build --wheel
 
-# Variable declarations. These variables are assigned in the dev/prod targets below.
+# Variable declarations. These variables are assigned in the dev/preprod/prod targets below.
 variables:
   catalog:
     description: The catalog to use
@@ -30,8 +30,18 @@ targets:
     workspace:
       host: https://dbc-c4b8c8d6-ec5b.cloud.databricks.com
     variables:
-      catalog: dlt_default
+      catalog: dlt_dev
       schema: dev
+  preprod:
+    mode: preprod
+    workspace:
+      host: https://dbc-c4b8c8d6-ec5b.cloud.databricks.com
+    variables:
+      catalog: dlt_preprod
+      schema: preprod
+      permissions:
+      - user_name: sairam1610345@gmail.com
+        level: CAN_MANAGE
   prod:
     mode: production
     workspace:
