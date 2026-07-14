@@ -1,0 +1,75 @@
+name: Deploy to Preprod
+
+on:
+  # Validate Pull Requests targeting preprod
+  pull_request:
+    branches:
+      - preprod
+
+  # Validate + Deploy after merge to preprod
+  push:
+    branches:
+      - preprod
+
+jobs:
+  validate:
+    name: Validate Bundle (Preprod)
+    runs-on: ubuntu-latest
+    environment: preprod
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Validate Bundle
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          databricks bundle validate --target preprod
+
+  deploy-preprod:
+    name: Deploy Bundle to Preprod
+    runs-on: ubuntu-latest
+    environment: preprod
+    needs: validate
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Build Python Wheel
+        run: |
+          uv build --wheel
+
+      - name: Deploy Bundle to Preprod
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          databricks bundle deploy --target preprod
