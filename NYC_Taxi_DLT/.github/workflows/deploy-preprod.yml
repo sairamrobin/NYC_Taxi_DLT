@@ -35,8 +35,8 @@ jobs:
 
       - name: Validate Bundle
         env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_PREPROD }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_PREPROD }}
         run: |
           databricks bundle validate --target preprod
 
@@ -69,7 +69,7 @@ jobs:
 
       - name: Deploy Bundle to Preprod
         env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_PREPROD }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_PREPROD }}
         run: |
           databricks bundle deploy --target preprod
