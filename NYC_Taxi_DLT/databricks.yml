@@ -12,7 +12,7 @@ artifacts:
     type: whl
     build: uv build --wheel
 
-# Variable declarations. These variables are assigned in the dev/preprod/prod targets below
+# Variable declarations. These variables are assigned in the dev/preprod/prod targets below...
 variables:
   catalog:
     description: The catalog to use
