@@ -1,75 +1,77 @@
-name: Deploy to Production
+name: Deploy — Prod
 
+# Triggered when a PR is merged into the `prod` branch.
+# Gated behind a GitHub Environment "prod" that requires manual approval.
 on:
-  # Validate Pull Requests targeting main
-  pull_request:
-    branches:
-      - main
-
-  # Validate + Deploy after merge to main
   push:
     branches:
-      - main
+      - prod
 
 jobs:
-  validate:
-    name: Validate Bundle (Prod)
-    runs-on: ubuntu-latest
-    environment: prod
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install uv
-        run: pip install uv
-
-      - name: Install Databricks CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
-
-      - name: Validate Bundle
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_PROD }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_PROD }}
-        run: |
-          databricks bundle validate --target prod
-
   deploy-prod:
-    name: Deploy Bundle to Production
+    name: Deploy to Prod
     runs-on: ubuntu-latest
+    # ⚠️  This environment MUST have "Required reviewers" configured in
+    #     GitHub → Settings → Environments → prod
+    #     The job will pause here until an approved reviewer clicks "Approve".
     environment: prod
-    needs: validate
-    if: github.event_name == 'push'
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install uv
-        run: pip install uv
-
       - name: Install Databricks CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          databricks version
 
-      - name: Build Python Wheel
-        run: |
-          uv build --wheel
+      - name: Build Python wheel
+        run: uv build --wheel
 
-      - name: Deploy Bundle to Production
+      # Validate against prod target before any real deployment
+      - name: Validate bundle (prod)
         env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_PROD }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_PROD }}
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: databricks bundle validate -t prod
+
+      # Deploy to production — runs only after human approval above
+      - name: Deploy bundle (prod)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: databricks bundle deploy -t prod
+
+      # Surface the deployed commit in the workflow summary for traceability
+      - name: Deployment summary
         run: |
-          databricks bundle deploy --target prod
+          echo "### ✅ Production deployment complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`prod\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deployed by | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+
+      # (Optional) Sync the linked Databricks Repo / git folder to the deployed commit.
+      # Uncomment and set DATABRICKS_REPO_PATH_PROD secret if you have a linked workspace git folder.
+      #
+      # - name: Sync Databricks Repo (prod)
+      #   env:
+      #     DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      #     DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      #   run: |
+      #     databricks repos update ${{ secrets.DATABRICKS_REPO_PATH_PROD }} \
+      #       --branch prod
