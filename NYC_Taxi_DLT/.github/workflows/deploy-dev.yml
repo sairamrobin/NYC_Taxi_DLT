@@ -1,0 +1,64 @@
+name: Deploy — Dev
+
+# Triggered when a PR is merged into the `develop` branch.
+# Deploys the bundle to the 'dev' target automatically.
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    # No GitHub Environment scoping needed — single PAT covers all targets
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history allows accurate git describe / tagging
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          databricks version
+
+      # Build the Python wheel artifact before deploying
+      - name: Build Python wheel
+        run: uv build --wheel
+
+      # Validate first — catch any last-minute errors before a real deploy
+      - name: Validate bundle (dev)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: databricks bundle validate -t dev
+
+      # Deploy to dev workspace
+      - name: Deploy bundle (dev)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: databricks bundle deploy -t dev
+
+      # (Optional) Sync the linked Databricks Repo / git folder to the merged commit.
+      # Uncomment and set DATABRICKS_REPO_PATH_DEV secret if you have a linked workspace git folder.
+      #
+      # - name: Sync Databricks Repo (dev)
+      #   env:
+      #     DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      #     DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      #   run: |
+      #     databricks repos update ${{ secrets.DATABRICKS_REPO_PATH_DEV }} \
+      #       --branch develop

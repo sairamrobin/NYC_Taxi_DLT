@@ -1,0 +1,2 @@
+# This directory holds bundle resource definitions (jobs, pipelines, etc.)
+# Add your pipeline YAML files here, e.g. resources/nyc_taxi_pipeline.yml

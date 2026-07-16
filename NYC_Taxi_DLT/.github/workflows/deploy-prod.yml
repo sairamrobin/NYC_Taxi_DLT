@@ -1,0 +1,77 @@
+name: Deploy — Prod
+
+# Triggered when a PR is merged into the `prod` branch.
+# Gated behind a GitHub Environment "prod" that requires manual approval.
+on:
+  push:
+    branches:
+      - prod
+
+jobs:
+  deploy-prod:
+    name: Deploy to Prod
+    runs-on: ubuntu-latest
+    # ⚠️  This environment MUST have "Required reviewers" configured in
+    #     GitHub → Settings → Environments → prod
+    #     The job will pause here until an approved reviewer clicks "Approve".
+    environment: prod
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          databricks version
+
+      - name: Build Python wheel
+        run: uv build --wheel
+
+      # Validate against prod target before any real deployment
+      - name: Validate bundle (prod)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: databricks bundle validate -t prod
+
+      # Deploy to production — runs only after human approval above
+      - name: Deploy bundle (prod)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: databricks bundle deploy -t prod
+
+      # Surface the deployed commit in the workflow summary for traceability
+      - name: Deployment summary
+        run: |
+          echo "### ✅ Production deployment complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`prod\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deployed by | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+
+      # (Optional) Sync the linked Databricks Repo / git folder to the deployed commit.
+      # Uncomment and set DATABRICKS_REPO_PATH_PROD secret if you have a linked workspace git folder.
+      #
+      # - name: Sync Databricks Repo (prod)
+      #   env:
+      #     DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      #     DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      #   run: |
+      #     databricks repos update ${{ secrets.DATABRICKS_REPO_PATH_PROD }} \
+      #       --branch prod
