@@ -1,75 +1,64 @@
-name: Deploy to Dev
+name: Deploy — Dev
 
+# Triggered when a PR is merged into the `develop` branch.
+# Deploys the bundle to the 'dev' target automatically.
 on:
-  # Validate when a PR is opened, synchronized, or reopened against dev
-  pull_request:
-    branches:
-      - dev
-
-  # Validate and Deploy when code is merged into dev
   push:
     branches:
-      - dev
+      - develop
 
 jobs:
-  validate:
-    name: Validate Bundle (Dev)
+  deploy-dev:
+    name: Deploy to Dev
     runs-on: ubuntu-latest
-    environment: dev
+    # No GitHub Environment scoping needed — single PAT covers all targets
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history allows accurate git describe / tagging
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install uv
-        run: pip install uv
-
       - name: Install Databricks CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          databricks version
 
-      - name: Validate Databricks Bundle
+      # Build the Python wheel artifact before deploying
+      - name: Build Python wheel
+        run: uv build --wheel
+
+      # Validate first — catch any last-minute errors before a real deploy
+      - name: Validate bundle (dev)
         env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_DEV }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_DEV }}
-        run: |
-          databricks bundle validate --target dev
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: databricks bundle validate -t dev
 
-  deploy:
-    name: Deploy Bundle to Dev
-    needs: validate
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: dev
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install uv
-        run: pip install uv
-
-      - name: Install Databricks CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
-
-      - name: Build Python Wheel
-        run: |
-          uv build --wheel
-
-      - name: Deploy Databricks Bundle
+      # Deploy to dev workspace
+      - name: Deploy bundle (dev)
         env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_DEV }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_DEV }}
-        run: |
-          databricks bundle deploy --target dev
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: databricks bundle deploy -t dev
+
+      # (Optional) Sync the linked Databricks Repo / git folder to the merged commit.
+      # Uncomment and set DATABRICKS_REPO_PATH_DEV secret if you have a linked workspace git folder.
+      #
+      # - name: Sync Databricks Repo (dev)
+      #   env:
+      #     DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      #     DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      #   run: |
+      #     databricks repos update ${{ secrets.DATABRICKS_REPO_PATH_DEV }} \
+      #       --branch develop

@@ -1,0 +1,49 @@
+name: PR — Bundle Validate
+
+# Runs on every pull request as a required status check.
+# Blocks merge if `databricks bundle validate -t dev` fails.
+on:
+  pull_request:
+    branches:
+      - develop
+      - preprod
+      - prod
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate:
+    name: Validate Bundle (dev target)
+    runs-on: ubuntu-latest
+    # No GitHub Environment scoping needed — single PAT covers all targets
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Install uv (fast Python package manager used by this project)
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Install Databricks CLI (bundle-aware, >= 0.218)
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          databricks version
+
+      # Build the Python wheel artifact so the validate step can resolve artifact references
+      - name: Build Python wheel
+        run: uv build --wheel
+
+      # Validate the bundle against the dev target — fails fast on any schema error
+      - name: Validate bundle (dev)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: databricks bundle validate -t dev

@@ -12,12 +12,12 @@ artifacts:
     type: whl
     build: uv build --wheel
 
-# Variable declarations. These variables are assigned in the dev/preprod/prod targets below.
+# Variable declarations. These variables are assigned in the dev/preprod/prod targets below
 variables:
   catalog:
-    description: The catalog to use.
+    description: The catalog to use
   schema:
-    description: The schema to use.
+    description: The schema to use
 
 targets:
   dev:
@@ -31,25 +31,32 @@ targets:
     variables:
       catalog: dlt_dev
       schema: dev
+    permissions:
+      - user_name: sairam1610345@gmail.com
+        level: CAN_MANAGE
+
   preprod:
-    mode: preprod
+    # mode must be 'development' or 'production' — 'preprod' is not a valid DAB mode
+    mode: production
     presets:
-      name_prefix: "[preprod][${workspace.current_user.short_name}]"
+      name_prefix: "[preprod]"
     workspace:
       host: https://dbc-c4b8c8d6-ec5b.cloud.databricks.com
+      root_path: /Workspace/Users/sairam1610345@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: dlt_preprod
       schema: preprod
-      permissions:
-        - user_name: sairam1610345@gmail.com
-          level: CAN_MANAGE
+    permissions:
+      - user_name: sairam1610345@gmail.com
+        level: CAN_MANAGE
+
   prod:
     mode: production
     presets:
-      name_prefix: "[prod][${workspace.current_user.short_name}]"
+      name_prefix: "[prod]"
     workspace:
       host: https://dbc-c4b8c8d6-ec5b.cloud.databricks.com
-      # We explicitly deploy to /Workspace/Users/sairam1610345@gmail.com to make sure we only have a single copy.
+      # Explicit root path ensures a single canonical copy in production
       root_path: /Workspace/Users/sairam1610345@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: dlt_prod
