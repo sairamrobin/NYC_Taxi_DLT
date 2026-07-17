@@ -1,0 +1,11 @@
+﻿{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "databricks": {
+      "type": "local",
+      "command": ["C:/DLT_Project/NYC_Taxi_DLT/NYC_Taxi_DLT/.venv/Scripts/python.exe", "C:/DLT_Project/NYC_Taxi_DLT/NYC_Taxi_DLT/repo/databricks-mcp-server/run_server.py"],
+      "environment": {"DATABRICKS_CONFIG_PROFILE": "dbc-c4b8c8d6-ec5b"},
+      "enabled": true
+    }
+  }
+}

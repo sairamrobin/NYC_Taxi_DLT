@@ -1,0 +1,9 @@
+﻿{
+  "servers": {
+    "databricks": {
+      "command": "C:/DLT_Project/NYC_Taxi_DLT/NYC_Taxi_DLT/.venv/Scripts/python.exe",
+      "args": ["C:/DLT_Project/NYC_Taxi_DLT/NYC_Taxi_DLT/repo/databricks-mcp-server/run_server.py"],
+      "env": {"DATABRICKS_CONFIG_PROFILE": "dbc-c4b8c8d6-ec5b"}
+    }
+  }
+}
